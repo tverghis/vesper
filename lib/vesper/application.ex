@@ -8,8 +8,7 @@ defmodule Vesper.Application do
   @impl true
   def start(_type, _args) do
     children = [
-      # Starts a worker by calling: Vesper.Worker.start_link(arg)
-      # {Vesper.Worker, arg}
+      {ThousandIsland, port: 3000, handler_module: Vesper.ConnectionHandler}
     ]
 
     # See https://hexdocs.pm/elixir/Supervisor.html
