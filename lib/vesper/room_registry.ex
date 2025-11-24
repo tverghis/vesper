@@ -14,6 +14,10 @@ defmodule Vesper.RoomRegistry do
     )
   end
 
+  def register_sender(room) do
+    Registry.register(__MODULE__, {:sender, room}, nil)
+  end
+
   def register_receiver(room, socket) do
     Registry.register(__MODULE__, {:receiver, room}, socket)
   end
