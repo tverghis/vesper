@@ -33,8 +33,8 @@ defmodule Vesper.ConnectionHandler do
   end
 
   defp handle_sender(room, state) do
-    with :ok         <- register_sender(room, state),
-         recv_socket <- find_recv_socket(room, state) do
+    with :ok                <- register_sender(room, state),
+         {:ok, recv_socket} <- find_recv_socket(room, state) do
       new_state = state
         |> Map.put(:role, :sender)
         |> Map.put(:recv_socket, recv_socket)
@@ -53,7 +53,7 @@ defmodule Vesper.ConnectionHandler do
 
   defp find_recv_socket(room, state) do
     case Vesper.RoomRegistry.lookup_receiver(room) do
-      [{_, recv_socket}] -> recv_socket
+      [{_, recv_socket}] -> {:ok, recv_socket}
       _                  -> {:close, state}
     end
   end
