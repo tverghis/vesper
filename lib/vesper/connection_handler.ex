@@ -23,9 +23,13 @@ defmodule Vesper.ConnectionHandler do
   end
 
   @impl ThousandIsland.Handler
-  def handle_data(data, _socket, %{role: role, recv_socket: recv_socket} = state) when role == :sender do
-    Socket.send(recv_socket, data)
-    {:continue, state}
+  def handle_data(data, socket, %{role: role, room: room, recv_socket: recv_socket} = state) when role == :sender do
+    case Socket.send(recv_socket, data) do
+      :ok -> {:continue, state}
+      _ ->
+        Logger.debug("Failed to send data to receiver for room #{room}; closing sender connection.")
+        close_socket_rudely(socket, state)
+    end
   end
 
   @impl ThousandIsland.Handler
@@ -43,6 +47,7 @@ defmodule Vesper.ConnectionHandler do
           state
           |> Map.put(:role, :sender)
           |> Map.put(:recv_socket, recv_socket)
+          |> Map.put(:room, room)
         }
 
       _ ->
