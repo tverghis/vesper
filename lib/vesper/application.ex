@@ -1,6 +1,4 @@
 defmodule Vesper.Application do
-  # See https://hexdocs.pm/elixir/Application.html
-  # for more information on OTP Applications
   @moduledoc false
 
   use Application
@@ -8,11 +6,10 @@ defmodule Vesper.Application do
   @impl true
   def start(_type, _args) do
     children = [
+      Vesper.RoomRegistry,
       {ThousandIsland, port: 3000, handler_module: Vesper.ConnectionHandler}
     ]
 
-    # See https://hexdocs.pm/elixir/Supervisor.html
-    # for other strategies and supported options
     opts = [strategy: :one_for_one, name: Vesper.Supervisor]
     Supervisor.start_link(children, opts)
   end
