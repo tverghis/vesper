@@ -17,9 +17,7 @@ defmodule Vesper.ConnectionHandler do
       "send|" <> room when room != "" ->
         Logger.debug("Established sender connection for room #{room}.")
         {:continue, %{role: :sender, room: room}}
-      "recv|" <> room when room != "" ->
-        Logger.debug("Established receiver connection for room #{room}.")
-        {:continue, %{role: :receiver, room: room}}
+      "recv|" <> room when room != "" -> register_receiver(room, socket, state)
       _ ->
         Logger.warning("Received invalid role message, closing connection.")
         close_socket_rudely(socket, state)
@@ -35,6 +33,14 @@ defmodule Vesper.ConnectionHandler do
   def handle_data(_data, socket, %{role: role, room: room} = state) when role == :receiver do
     Logger.warning("Received unexpected data from receiver for room #{room}, closing connection.")
     close_socket_rudely(socket, state)
+  end
+
+  defp register_receiver(room, socket, state) do
+    Logger.debug("Registering reciever for room #{room}")
+    case Vesper.RoomRegistry.register_receiver(room, socket) do
+      {:ok, _} -> {:continue, %{role: :receiver, room: room}}
+      _ -> close_socket_rudely(socket, state)
+    end
   end
 
   defp close_socket_rudely(socket, state) do
