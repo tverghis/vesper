@@ -17,4 +17,8 @@ defmodule Vesper.RoomRegistry do
   def register_receiver(room, socket) do
     Registry.register(__MODULE__, {:receiver, room}, socket)
   end
+
+  def lookup_receiver(room) do
+    Registry.lookup(__MODULE__, {:receiver, room})
+  end
 end

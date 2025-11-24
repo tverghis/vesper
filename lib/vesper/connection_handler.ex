@@ -14,10 +14,8 @@ defmodule Vesper.ConnectionHandler do
   @impl ThousandIsland.Handler
   def handle_data(data, socket, %{role: role} = state) when role == :unknown do
     case String.trim(data) do
-      "send|" <> room when room != "" ->
-        Logger.debug("Established sender connection for room #{room}.")
-        {:continue, %{role: :sender, room: room}}
-      "recv|" <> room when room != "" -> register_receiver(room, socket, state)
+      "send|" <> room when room != "" -> handle_sender(room, socket, state)
+      "recv|" <> room when room != "" -> handle_receiver(room, socket, state)
       _ ->
         Logger.warning("Received invalid role message, closing connection.")
         close_socket_rudely(socket, state)
@@ -25,7 +23,8 @@ defmodule Vesper.ConnectionHandler do
   end
 
   @impl ThousandIsland.Handler
-  def handle_data(_data, _socket, %{role: role} = state) when role == :sender do
+  def handle_data(data, _socket, %{role: role, recv_socket: recv_socket} = state) when role == :sender do
+    Socket.send(recv_socket, data)
     {:continue, state}
   end
 
@@ -35,8 +34,25 @@ defmodule Vesper.ConnectionHandler do
     close_socket_rudely(socket, state)
   end
 
-  defp register_receiver(room, socket, state) do
-    Logger.debug("Registering reciever for room #{room}")
+  defp handle_sender(room, send_socket, state) do
+    case Vesper.RoomRegistry.lookup_receiver(room) do
+      [{_pid, recv_socket}] ->
+        Logger.debug("Established send-recieve pipe.")
+        {
+          :continue,
+          state
+          |> Map.put(:role, :sender)
+          |> Map.put(:recv_socket, recv_socket)
+        }
+
+      _ ->
+        Logger.debug("Could not find receiver for room #{room}; closing sender connection.")
+        close_socket_rudely(send_socket, state)
+    end
+  end
+
+  defp handle_receiver(room, socket, state) do
+    Logger.debug("Registering reciever for room #{room}.")
     case Vesper.RoomRegistry.register_receiver(room, socket) do
       {:ok, _} -> {:continue, %{role: :receiver, room: room}}
       _ -> close_socket_rudely(socket, state)
