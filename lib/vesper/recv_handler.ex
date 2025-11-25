@@ -1,4 +1,5 @@
 defmodule Vesper.RecvHandler do
+  alias Vesper.HandlerUtils
   require Logger
   use ThousandIsland.Handler
 
@@ -9,11 +10,9 @@ defmodule Vesper.RecvHandler do
 
   @impl ThousandIsland.Handler
   def handle_data(data, socket, state) when state == %{} do
-    room_name = String.trim(data)
-
-    case Vesper.RoomRegistry.register_receiver(room_name, socket) do
-      {:ok, _} -> {:continue, %{room: room_name}}
-      _        -> {:close, state}
+    with {:ok, room} <- HandlerUtils.validate_room(data, state),
+         :ok         <- register_receiver(room, socket, state) do
+      {:continue, %{room: room}}
     end
   end
 
@@ -21,5 +20,12 @@ defmodule Vesper.RecvHandler do
   def handle_data(_data, _socket, %{room: room} = state) do
     Logger.warning("Received unexpected data from receiver for room #{room}, closing connection.")
     {:close, state}
+  end
+
+  defp register_receiver(room, socket, state) do
+    case Vesper.RoomRegistry.register_receiver(room, socket) do
+      {:ok, _} -> :ok
+      _        -> {:close, state}
+    end
   end
 end

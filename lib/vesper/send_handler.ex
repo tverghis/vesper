@@ -1,5 +1,6 @@
 defmodule Vesper.SendHandler do
   alias ThousandIsland.Socket
+  alias Vesper.HandlerUtils
   require Logger
   use ThousandIsland.Handler
 
@@ -10,13 +11,12 @@ defmodule Vesper.SendHandler do
 
   @impl ThousandIsland.Handler
   def handle_data(data, _socket, state) when state == %{} do
-    room_name = String.trim(data)
-
-    with :ok         <- register_sender(room_name, state),
-         {:ok, peer} <- find_peer(room_name, state) do
+    with {:ok, room} <- HandlerUtils.validate_room(data, state),
+                 :ok <- register_sender(room, state),
+         {:ok, peer} <- find_peer(room, state) do
       new_state = state
         |> Map.put(:peer, peer)
-        |> Map.put(:room, room_name)
+        |> Map.put(:room, room)
 
       {:continue, new_state}
     end
