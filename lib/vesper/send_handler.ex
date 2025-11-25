@@ -11,9 +11,11 @@ defmodule Vesper.SendHandler do
 
   @impl ThousandIsland.Handler
   def handle_data(data, _socket, state) when state == %{} do
-    with {:ok, room} <- HandlerUtils.validate_room(data, state),
-                 :ok <- register_sender(room, state),
-         {:ok, peer} <- find_peer(room, state) do
+    with {:ok, room}      <- HandlerUtils.validate_room(data, state),
+         :ok              <- register_sender(room, state),
+         {:ok, pid, peer} <- find_peer(room, state),
+         :ok              <- link_peer(pid, state)
+    do
       new_state = state
         |> Map.put(:peer, peer)
         |> Map.put(:room, room)
@@ -30,6 +32,11 @@ defmodule Vesper.SendHandler do
     end
   end
 
+  @impl GenServer
+  def handle_info({:EXIT, _, _}, {_socket, state}) do
+    {:stop, :peer_exit, state}
+  end
+
   defp register_sender(room, state) do
     case Vesper.RoomRegistry.register_sender(room) do
       {:ok, _} -> :ok
@@ -39,8 +46,15 @@ defmodule Vesper.SendHandler do
 
   defp find_peer(room, state) do
     case Vesper.RoomRegistry.lookup_receiver(room) do
-      [{_, recv_socket}] -> {:ok, recv_socket}
-      _                  -> {:close, state}
+      [{pid, recv_socket}] -> {:ok, pid, recv_socket}
+      _                    -> {:close, state}
+    end
+  end
+
+  defp link_peer(pid, state) do
+    case Process.link(pid) do
+      true -> :ok
+      _    -> {:close, state}
     end
   end
 end

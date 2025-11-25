@@ -22,6 +22,11 @@ defmodule Vesper.RecvHandler do
     {:close, state}
   end
 
+  @impl GenServer
+  def handle_info({:EXIT, _, _}, {_socket, state}) do
+    {:stop, :peer_exit, state}
+  end
+
   defp register_receiver(room, socket, state) do
     case Vesper.RoomRegistry.register_receiver(room, socket) do
       {:ok, _} -> :ok
